@@ -1,0 +1,48 @@
+image: node:18.14.2
+
+pipelines:
+  custom:
+    deploy-to-prod:
+      - variables:
+          - name: generate_prisma
+            default: no
+            allowed-values:
+              - yes
+              - no
+          - name: build_email
+            default: no
+            allowed-values:
+              - yes
+              - no
+
+      - step:
+          name: Deploy to prod server 1
+          deployment: production
+          script:
+            - echo "Deployment initiated"
+            - apt update && apt install sshpass -y
+            - ssh $prod_user@$prod_ip1 "sudo -S sh /home/ubuntu/scripts/DM-deploy.sh"
+      - step:
+          name: Deploy to prod server 2
+          script:
+            - echo "Deployment initiated"
+            - apt update && apt install sshpass -y
+            - ssh $prod_user@$prod_ip2 "sudo -S sh /home/ubuntu/scripts/DM-deploy.sh"
+
+      - step:
+          name: Generate Prisma
+          script:
+            - if [ "$generate_prisma" == "yes" ]; then
+                ssh $prod_user@$prod_ip1 "sudo -S sh /home/ubuntu/scripts/prisma-generate.sh"
+              else
+                echo "Prisma generation not requested"
+              fi
+
+      - step:
+          name: Build Email
+          script:
+            - if [ "$build_email" == "yes" ]; then
+                ssh $prod_user@$prod_ip1 "sudo -S sh /home/ubuntu/scripts/email-build.sh"
+              else
+                echo "Email build not requested"
+              fi
